@@ -78,7 +78,6 @@ void setup() {
 }
 
 void loop() {
-  //This is a workaround for not being able to use a delimiter
 start:
   String input = "";
   //while (Serial2.available()) {
