@@ -68,26 +68,27 @@ void setup() {
   }
 }
 
-String loop() {
+String input;
 
-  //String input = serialListener();
+void loop() {
   
-  String input = "";
-  input = Serial2.readStringUntil('/r');
-  while (input != "") {
-    if (Serial2.available()) {
-      if (input != "") {
-        return input;
-
-      }
-    }
+  //String input = serialListener();
+  String nuveau = Serial2.readStringUntil('/r');
+  if(nuveau != input and nuveau != "" and nuveau != "^M" and HasData == 0){
+    input = nuveau;
+    HasData = 1;
+    Serial2.print("String recieved, press button to move");
+    Serial2.print(input);
+    Serial2.println();
   }
   pinMode(buttonPin, INPUT_PULLDOWN);
   buttonState = digitalRead(buttonPin);
   if (buttonState == HIGH) {
     motorMove(input);
   }
+  
 }
+
 /*String serialListener() {
   //while (Serial2.available()) {
 

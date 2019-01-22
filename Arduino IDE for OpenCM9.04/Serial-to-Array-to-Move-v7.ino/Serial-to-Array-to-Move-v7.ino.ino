@@ -1,5 +1,5 @@
 /*====================================================================================
-  Serial to array to move V5
+  Serial to array to move V7
   ====================================================================================
   The purpose of this code is to take an input of position and time data in the style
   of animation keyframes from Serial, in this case a bluetooth LE adapter paired to a
@@ -48,6 +48,7 @@ int buttonState = 0;
 int lengthFinal = 0;
 bool HasData = 0;
 String overrideConfirm = "";
+String input;
 
 
 void setup() {
@@ -68,46 +69,29 @@ void setup() {
   }
 }
 
-String loop() {
 
-  //String input = serialListener();
-  
-  String input = "";
-  input = Serial2.readStringUntil('/r');
-  while (input != "") {
-    if (Serial2.available()) {
-      if (input != "") {
-        return input;
 
-      }
-    }
+void loop() {
+
+  String nuveau = Serial2.readStringUntil('/r');
+  if (nuveau != input and nuveau != "" and nuveau != "^M" and HasData == 0) {
+    input = nuveau;
+    HasData = 1;
+    Serial2.print("String recieved, press button to move");
+    Serial2.print(input);
+    Serial2.println();
   }
   pinMode(buttonPin, INPUT_PULLDOWN);
   buttonState = digitalRead(buttonPin);
   if (buttonState == HIGH) {
     motorMove(input);
   }
+
 }
-/*String serialListener() {
-  //while (Serial2.available()) {
-
-  String input = "";
-  input = Serial2.readStringUntil('/r');
-  while (input != "") {
-    if (Serial2.available()) {
-      if (input != "") {
-        return input;
-
-      }
-    }
-  }*/
-
-
-
 
 void motorMove(String input) {
 
-//String parse begin
+  //String parse begin
 
   Serial2.println("Data recieved");
 

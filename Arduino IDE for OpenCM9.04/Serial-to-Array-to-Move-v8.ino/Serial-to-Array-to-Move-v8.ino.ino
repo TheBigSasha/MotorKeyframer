@@ -1,5 +1,5 @@
 /*====================================================================================
-  Serial to array to move V5
+  Serial to array to move V7
   ====================================================================================
   The purpose of this code is to take an input of position and time data in the style
   of animation keyframes from Serial, in this case a bluetooth LE adapter paired to a
@@ -16,9 +16,13 @@
   Smart Servos, however it can be easily adapted to any other type of servo motor.
   ======================================================================================*/
 
-const int TotalMotors = 3;
+
+//there is a multitude of if statements because Switch / Case blocks work only with int or char variables, but not strings in Arduino
+
+int totalMotors = 3;
 #define BAUDRATE  1000000
 #define buttonPin 23 //Opencm 9.04 internal button /*This will not compile if your board is set to anything but OpenCM 9.04*/
+#define button2Pin 22 //External Button ------ Used to reset data
 #include <DynamixelWorkbench.h>
 //Setting Serial Port for Dynamixel Control Board
 #if defined(__OPENCM904__)
@@ -26,7 +30,7 @@ const int TotalMotors = 3;
 #elif defined(__OPENCR__)
 #define DEVICE_NAME "1"
 #endif
-const int TotalIDs = TotalMotors + 1;
+const int TotalIDs = totalMotors + 1;
 const int vel = 60; //This is the velocity the morors will use (DynamixelWorkbench)
 const int acc = 100; //This is the acceleration the motors will use (DynamixelWorkbench)
 const int MatrixWidth = TotalIDs;
@@ -38,23 +42,21 @@ int widthFinal = MatrixWidth;//Width final can change depedning on the serial da
   ====================================================================================*/
 DynamixelWorkbench dxl_wb;
 /*Establishing variables and array for serial reads */
-
-int buttonState = 0;
+int buttonState;
+int button2State;
+int lengthFinal = 0;
+bool hasData = 0;
+String input;
 /*====================================================================================
-   {delay, pos for motor ID 1, pos for motor ID 2 + n, pos for motor ID 3 ...},
+   <dataType>delay, pos for motor ID 1, pos for motor ID 2, pos for motor ID 3, delay2, pos2-1, pos2-2, pos2-3 .../r
    This is the declaration of the empty array which is later filled from Serial
   ====================================================================================*/
-
-int lengthFinal = 0;
-bool HasData = 0;
-String overrideConfirm = "";
 
 
 void setup() {
   //=========================== Serial initializations ===============================
   Serial.begin(57600);//Serial port Dynamixel
   Serial2.begin(9600);//Serial port for Bluetooth
-  String input = "";
   //============================ Motor initializations ===============================
   dxl_wb.begin(DEVICE_NAME, BAUDRATE);
   for (int i = 1; i < TotalIDs; i++) {
@@ -68,46 +70,61 @@ void setup() {
   }
 }
 
-String loop() {
 
-  //String input = serialListener();
-  
-  String input = "";
-  input = Serial2.readStringUntil('/r');
-  while (input != "") {
-    if (Serial2.available()) {
-      if (input != "") {
-        return input;
 
-      }
+void loop() {
+  String nuveau = Serial2.readStringUntil('/r');
+  if (nuveau != input and nuveau != "" and nuveau != "^M" and hasData == 0) {
+    if (nuveau.startsWith("<moveData>")) {
+      input = nuveau;
+      hasData = 1;
+      Serial2.print("String recieved, press button to move");
+      Serial2.print(input);
+      Serial2.println();
+      Serial2.flush();
     }
   }
+
   pinMode(buttonPin, INPUT_PULLDOWN);
   buttonState = digitalRead(buttonPin);
   if (buttonState == HIGH) {
     motorMove(input);
   }
-}
-/*String serialListener() {
-  //while (Serial2.available()) {
-
-  String input = "";
-  input = Serial2.readStringUntil('/r');
-  while (input != "") {
-    if (Serial2.available()) {
-      if (input != "") {
-        return input;
-
-      }
+  pinMode(button2Pin, INPUT_PULLDOWN);
+  button2State = digitalRead(button2Pin);
+  if (button2State == HIGH) {
+    Serial2.println("Move data cleared");
+    hasData = 0;
+    Serial2.flush();
+  }
+  if (nuveau == "<newData>/" or "<newData>" and not input.startsWith("<moveData>")) {
+    hasData = 0;
+    Serial2.println("Ready for data read");
+    input = "";
+    Serial2.flush();
+  }
+  if (input == "") {
+    hasData = 0;
+  }
+  if (nuveau.startsWith("<moveTrigger>")) {
+    if (hasData == 1) {
+      motorMove(input);
     }
-  }*/
+    else {
+      Serial2.println("Error, no data");
+    }
+    Serial2.flush();
+  }
 
-
-
+  else {
+    Serial2.println("Unknown data type for string " + nuveau);
+    Serial2.flush();
+  }
+}
 
 void motorMove(String input) {
 
-//String parse begin
+  //String parse begin
 
   Serial2.println("Data recieved");
 
@@ -134,14 +151,26 @@ void motorMove(String input) {
     }
   }
 
+  if (input.startsWith("<moveData>")) {
+    input.remove(0, 9);
+    lengthString = input.length();
+  }
+
+  if (input.startsWith("<newData>")) {
+    input.remove(0, 8);
+    lengthString = input.length();
+  }
+
+  if (input.startsWith("<moveTrigger>")) {
+    input.remove(0, 10);
+    lengthString = input.length();
+  }
+
   Serial2.print("String Processed ");
   Serial2.print(input);
   Serial2.println();
 
   Serial2.println("Move begin");
-
-  //if (input != "," or "") {
-
 
   for (int i = 0; i < lengthString; i++) {
     if (input.substring(i, i + 1) == ",") {
@@ -173,10 +202,7 @@ void motorMove(String input) {
 
   Serial2.println("String array built");
 
-
   int integers[lengthInput];
-
-
   for (int i = 0; i < lengthInput; i++) {
     integers[i] = numbers[i].toInt();
   }//Create and fill a 1d array of integers
@@ -212,14 +238,8 @@ void motorMove(String input) {
     }
     Serial2.println();
   }//Read the array back to Serial2
-
-
-
-  input = "";//Reset until the next serial data is recieved
-  HasData = 1; //Indicate that there has been data recieved
-
+  hasData = 1; //Indicate that there has been data recieved
   Serial2.println("Data processed, ready to move");
-
 
   {
     for (int i = 0; i < lengthFinal ; i++) {
@@ -234,13 +254,14 @@ void motorMove(String input) {
         for (int j = 1; j < widthFinal; j++) {
 
           dxl_wb.goalPosition(j, MoveMatrix[i][j]); //Moves motor to corresponding position
-          Serial2.print("Motor ID + Position"); //Print Motor ID And Pos for Debug
+          Serial2.print("Motor ID ");
           Serial2.print(j);
-          Serial2.print(" + ");
-          Serial2.print(MoveMatrix[i][j]);
+          Serial2.print(" +  Position");
+          Serial2.print(MoveMatrix[i][j]); //Print Motor ID And Pos for Debug
           Serial2.println();
-          delay(MoveMatrix[i][0]); //This one is 0 in the matrix becase the delay is always i 0
         }
+        Serial2.println("Time " + MoveMatrix[i][0]);
+        delay(MoveMatrix[i][0]); //This one is 0 in the matrix becase the delay is always i 0
       }
     }
   }
