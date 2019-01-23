@@ -97,7 +97,7 @@ void loop() {
     hasData = 0;
     Serial2.flush();
   }
-  if (nuveau == "<newData>/" or "<newData>" and not input.startsWith("<moveData>")) {
+  if (nuveau.startsWith("<newData>")) {
     hasData = 0;
     Serial2.println("Ready for data read");
     input = "";
@@ -113,11 +113,6 @@ void loop() {
     else {
       Serial2.println("Error, no data");
     }
-    Serial2.flush();
-  }
-
-  else {
-    Serial2.println("Unknown data type for string " + nuveau);
     Serial2.flush();
   }
 }
@@ -162,7 +157,12 @@ void motorMove(String input) {
   }
 
   if (input.startsWith("<moveTrigger>")) {
-    input.remove(0, 10);
+    input.remove(0, 12);
+    lengthString = input.length();
+  }
+
+    if (input.startsWith(">")) {
+    input.remove(0, 1);
     lengthString = input.length();
   }
 
