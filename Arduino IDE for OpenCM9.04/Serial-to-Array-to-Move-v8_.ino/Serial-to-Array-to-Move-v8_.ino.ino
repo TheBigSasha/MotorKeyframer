@@ -1,5 +1,5 @@
 /*====================================================================================
-  Serial to array to move V7
+  Serial to array to move V8
   ====================================================================================
   The purpose of this code is to take an input of position and time data in the style
   of animation keyframes from Serial, in this case a bluetooth LE adapter paired to a
@@ -255,7 +255,6 @@ void motorMove(String input) {
           dxl_wb.goalPosition(j, MoveMatrix[i][j]); //Moves motor to corresponding position
           Serial2.print("Motor ID ");
           Serial2.print(j);
-          int position = dxl_wb.getPresentPositionData(j);
           Serial2.print(" +  Position");
           Serial2.print(MoveMatrix[i][j]); //Print Motor ID And Pos for Debug
           Serial2.println();

@@ -1,5 +1,5 @@
 /*====================================================================================
-  Serial to array to move V7
+  Serial to array to move V8
   ====================================================================================
   The purpose of this code is to take an input of position and time data in the style
   of animation keyframes from Serial, in this case a bluetooth LE adapter paired to a
@@ -47,6 +47,8 @@ int button2State;
 int lengthFinal = 0;
 bool hasData = 0;
 String input;
+int32_t motorPosition;
+unsigned long currentTime;
 /*====================================================================================
    <dataType>delay, pos for motor ID 1, pos for motor ID 2, pos for motor ID 3, delay2, pos2-1, pos2-2, pos2-3 .../r
    This is the declaration of the empty array which is later filled from Serial
@@ -55,12 +57,15 @@ String input;
 void setup() {
   //=========================== Serial initializations ===============================
   Serial.begin(57600);//Serial port Dynamixel
-  Serial2.begin(9600);//Serial port for Bluetooth
+  /*Serial2.write("AT+NAME=SashaMocoBT");
+  Serial2.write("AT+BAUD=57600,N");*/
+  Serial2.begin(9600); //Serial port for Bluetooth
   //============================ Motor initializations ===============================
   dxl_wb.begin(DEVICE_NAME, BAUDRATE);
   for (int i = 1; i < TotalIDs; i++) {
     dxl_wb.ping(i);
-    dxl_wb.jointMode(i, vel, acc);
+    //dxl_wb.jointMode(i, vel, acc);
+    dxl_wb.jointMode(i);
     //============================= Debugging Readout ================================
     Serial2.print("Motor ");
     Serial2.print(i);
@@ -81,6 +86,7 @@ void loop() {
       Serial2.print(input);
       Serial2.println();
       Serial2.flush();
+      nuveau = "";
     }
   }
 
@@ -88,6 +94,8 @@ void loop() {
   buttonState = digitalRead(buttonPin);
   if (buttonState == HIGH) {
     motorMove(input);
+    Serial2.flush();
+    nuveau = "";
   }
   pinMode(button2Pin, INPUT_PULLDOWN);
   button2State = digitalRead(button2Pin);
@@ -95,24 +103,32 @@ void loop() {
     Serial2.println("Move data cleared");
     hasData = 0;
     Serial2.flush();
+    nuveau = "";
   }
   if (nuveau.startsWith("<newData>")) {
     hasData = 0;
     Serial2.println("Ready for data read");
     input = "";
     Serial2.flush();
+    nuveau = "";
   }
   if (input == "") {
     hasData = 0;
   }
   if (nuveau.startsWith("<moveTrigger>")) {
-    if (hasData == 1) {
-      motorMove(input);
+  if (nuveau == "<moveTrigger>" ) {
+      if (hasData == 1) {
+        motorMove(input);
+      }
+      else {
+        Serial2.println("Error, no data");
+      }
+      Serial2.flush();
+      nuveau = "";
     }
     else {
-      Serial2.println("Error, no data");
+      Serial2.println("ERROR: <moveTrigger> has no additional data");
     }
-    Serial2.flush();
   }
 }
 
@@ -128,46 +144,20 @@ void motorMove(String input) {
 
   int lengthString = input.length();//Find the number of characters in the recieved string
 
-  if (input.endsWith("/r")) {
-    input.remove(lengthString - 2, lengthString); //Removes the carriage return (end marker) from the string, if it is present
-    lengthString = input.length(); //Finds the new length of the string
+  input = typeRemover(input, lengthString);
+
+  lengthString = input.length();
+
+  Serial2.println("String Processed " + input);
+
+  if (input.startsWith("0") or input.startsWith("1") or input.startsWith("2") or input.startsWith("3") or input.startsWith("4") or input.startsWith("5") or input.startsWith("6") or input.startsWith("7") or input.startsWith("8") or input.startsWith("9")) {
+    Serial2.println("String Correct.");
+  }
+  else {
+    Serial2.println("ERROR: Input does not start with an integer. Check Packet.");
+    return;
   }
 
-  if (input.endsWith("/")) {
-    input.remove(lengthString - 1, lengthString);              //Removes the carriage return (end marker) from the string, if it is present
-    lengthString = input.length();                             //Finds the new length of the string
-  }
-
-  if (!input.endsWith(",")) {
-    if (input != "") {
-      input = input + ",";                                    //Change to doesn't end with above and uncomment to add a comma
-      lengthString = input.length();                            //Finds the new length of the string
-    }
-  }
-
-  if (input.startsWith("<moveData>")) {
-    input.remove(0, 9);
-    lengthString = input.length();
-  }
-
-  if (input.startsWith("<newData>")) {
-    input.remove(0, 8);
-    lengthString = input.length();
-  }
-
-  if (input.startsWith("<moveTrigger>")) {
-    input.remove(0, 12);
-    lengthString = input.length();
-  }
-
-    if (input.startsWith(">")) {
-    input.remove(0, 1);
-    lengthString = input.length();
-  }
-
-  Serial2.print("String Processed ");
-  Serial2.print(input);
-  Serial2.println();
 
   Serial2.println("Move begin");
 
@@ -252,18 +242,104 @@ void motorMove(String input) {
       else {
         for (int j = 1; j < widthFinal; j++) {
 
+          currentTime = millis();
+
+          int previousPosition;
+          int deltaPosition;
+          int currentPosition;
+          int deltaTime;
+
+          if (i != 0) {
+            previousPosition = MoveMatrix[i - 1][j];
+          }
+          else {
+            previousPosition = dxl_wb.itemRead(j, "Present_Position");
+          }
+
+          currentPosition = MoveMatrix[i][j];
+
+          if (currentPosition > previousPosition) {
+            deltaPosition = currentPosition - previousPosition;
+          }
+          if (currentPosition <= previousPosition) {
+            deltaPosition = previousPosition - currentPosition;
+          }
+
+          deltaTime = MoveMatrix[i][0];
+
+          int goalVel = deltaPosition / deltaTime; //This is in units of 360/4096 degrees per millisecond
+
+          const int goalTargetRatio = 234375 / 3664;  // 360/4096 d/ms = 1875/128 rpm; 234375/3664 0.229 RPMs per d/ms
+
+          Serial2.print("goalVel = ");
+          Serial2.println(goalVel);
+          Serial2.print("GTR = ");
+          Serial2.println(goalTargetRatio);
+
+          int targetVel = goalVel * goalTargetRatio; //This is the velocity in units of 0.229 [rev/min] as per the library spec
+
+          //TO ADD: Scan to next velocity to calculate Profile Acceleration
+
+          Serial2.print("Goal Velocity (0.229RPM) is ");
+          Serial2.println(targetVel);
+
+          dxl_wb.itemWrite(j, "Profile_Velocity", targetVel);
           dxl_wb.goalPosition(j, MoveMatrix[i][j]); //Moves motor to corresponding position
-          Serial2.print("Motor ID ");
-          Serial2.print(j);
-          int position = dxl_wb.getPresentPositionData(j);
-          Serial2.print(" +  Position");
-          Serial2.print(MoveMatrix[i][j]); //Print Motor ID And Pos for Debug
-          Serial2.println();
+          Serial2.print("Coords are ");
+          Serial2.println(MoveMatrix[i][j]);
+          Serial2.print("ID is ");
+          Serial2.println(j);
+          Serial2.print("Read positon of motor is ");
+          motorPosition = dxl_wb.itemRead(j, "Present_Position");
+          Serial2.println(motorPosition);
         }
         Serial2.println("Time " + MoveMatrix[i][0]);
-        delay(MoveMatrix[i][0]); //This one is 0 in the matrix becase the delay is always i 0
+        delay(MoveMatrix[i][0]);
+        /*int deltaTime = MoveMatrix[i][0];
+          if(millis() == currentTime + deltaTime){
+          continue;
+          }
+          else{
+          delayMicroseconds(1);
+          }*/
       }
     }
   }
   Serial2.println("Move end");
+  return;
 }
+
+String typeRemover(String input, int lengthString) {
+  if (input.endsWith("/r")) {
+    input.remove(lengthString - 2, lengthString); //Removes the carriage return (end marker) from the string, if it is present
+  }
+
+  if (input.endsWith("/")) {
+    input.remove(lengthString - 1, lengthString);              //Removes the carriage return (end marker) from the string, if it is present
+  }
+
+  if (!input.endsWith(",")) {
+    if (input != "") {
+      input = input + ",";                                    //Change to doesn't end with above and uncomment to add a comma
+    }
+  }
+
+  if (input.startsWith("<moveData>")) {
+    input.remove(0, 9);
+  }
+
+  if (input.startsWith("<newData>")) {
+    input.remove(0, 8);
+  }
+
+  if (input.startsWith("<moveTrigger>")) {
+    input.remove(0, 12);
+  }
+
+  if (input.startsWith(">")) {
+    input.remove(0, 1);
+  }
+
+  return input;
+}
+
