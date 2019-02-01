@@ -1,5 +1,5 @@
 /*====================================================================================
-  MotionKeyframer-V0.1
+  MotionKeyframer-V0.3
   ====================================================================================
 
   This is a combination of Serial-To-Array-To-Move V10 and MoveRecorder V1
@@ -218,9 +218,7 @@ void motorMove(String input) {
 
   lengthString = input.length();
 
-
-
-  if (isDigit(input.substring(0,1)) == true) {
+  if (input.startsWith("0") or input.startsWith("1") or input.startsWith("2") or input.startsWith("3") or input.startsWith("4") or input.startsWith("5") or input.startsWith("6") or input.startsWith("7") or input.startsWith("8") or input.startsWith("9")) {
     Serial2.println("String Correct." + input);
   }
   else {
@@ -271,13 +269,13 @@ void motorMove(String input) {
       //Serial2.println(moveMatrix[i][j]);
     }//Fill move matrix
   }
-  for (int i = 0; i < lengthFinal; i++) {
+  /*for (int i = 0; i < lengthFinal; i++) {
     for (int j = 0; j < widthFinal; j++) {
       Serial2.print(moveMatrix[i][j]);
       Serial2.print(" , ");
     }
-    Serial2.println();
-  }//Read the array back to Serial2
+    Serial2.println();*/
+  //Read the array back to Serial2
   hasData = 1; //Indicate that there has been data recieved
   //Serial2.println("Data processed, ready to move");
 
@@ -298,12 +296,10 @@ void motorMove(String input) {
         for (int j = 1; j < widthFinal; j++) {
 
 
-
           float previousPosition;
           float currentPosition;
           float deltaPosition;
           int deltaTime;
-
 
 
           if (i == 0) {
@@ -313,9 +309,6 @@ void motorMove(String input) {
             previousPosition = moveMatrix[i - 1][j];
             currentPosition = moveMatrix[i][j];
           }
-
-
-
 
           if (currentPosition > previousPosition) {
             deltaPosition = currentPosition - previousPosition;
@@ -339,11 +332,11 @@ void motorMove(String input) {
 
           double unroundedTargetVel = unroundedGoalVel * goalTargetRatio; //This is the velocity in units of 0.229 [rev/min] as per the library spec
 
-          Serial2.print("X1 = "); Serial2.println(previousPosition);
+          /*Serial2.print("X1 = "); Serial2.println(previousPosition);
           Serial2.print("X2 = "); Serial2.println(currentPosition);
           Serial2.print("dX = "); Serial2.println(deltaPosition);
           Serial2.print("dT = "); Serial2.println(deltaTime);
-          Serial2.print("v = "); Serial2.println(unroundedGoalVel);
+          Serial2.print("v = "); Serial2.println(unroundedGoalVel);*/
 
 
           int targetVel = round(unroundedTargetVel);
@@ -357,14 +350,14 @@ void motorMove(String input) {
           dxl_wb.itemWrite(j, "Profile_Velocity", targetVel);
           //while (dxl_wb.itemRead(j, "Present_Position") != moveMatrix[i][j]) {
           dxl_wb.goalPosition(j, moveMatrix[i][j]); //Moves motor to corresponding position
-          Serial2.print("goal position for ID ");
+          /*Serial2.print("goal position for ID ");
           Serial2.print(j);
           Serial2.print(" is ");
           Serial2.print(moveMatrix[i][j]);
           Serial2.print(" and velocity is ");
           Serial2.print(targetVel);
           Serial2.println();
-          /*Serial2.print("Coords are ");
+          Serial2.print("Coords are ");
             Serial2.println(moveMatrix[i][j]);
             Serial2.print("ID is ");
             Serial2.println(j);
@@ -374,7 +367,7 @@ void motorMove(String input) {
           //}
 
         }
-        Serial2.println("Time " + moveMatrix[i][0]);
+        //Serial2.println("Time " + moveMatrix[i][0]);
         //delay(moveMatrix[i][0]);
         int deltaTime = moveMatrix[i][0];
 
@@ -476,7 +469,7 @@ String moveRead(String input) {
   char inputArray[lengthString];
   input.toCharArray(inputArray, lengthString);//Converts the serial data into a 1d char array
 
-  Serial2.println("Char array built");
+  //Serial2.println("Char array built");
 
   String numbers[lengthInput];//Create a 1d int array of strings
 
@@ -490,7 +483,7 @@ String moveRead(String input) {
     }
   }//fill the string array
 
-  Serial2.println("String array built");
+  //Serial2.println("String array built");
 
   int integers[lengthInput];
   for (int i = 0; i < lengthInput; i++) {
@@ -521,18 +514,21 @@ String moveRead(String input) {
   Serial2.println(recordingNow);
   Serial2.println(startTime);
 
-  switch (recordingNow) {
-    //while (recordingNow == 1) {
-    case 0 : {
+  //switch (recordingNow) {
+   
+    //case 0 : {
+    if (recordingNow == 0){
         int prevTime = millis();
         Serial2.println("End Rec in 15ms");
         if (millis() >= prevTime + 15 and recordingNow == 0) {
           String moveRead = moveData;
           Serial2.println(moveRead);
           return moveRead;
+          //break;
         }
       }
-    case 1 :
+    //case 1 :
+     while (recordingNow == 1) {
       {
         if (millis() == previousTime + sampleMSPF) {
           previousTime = millis();
@@ -546,13 +542,15 @@ String moveRead(String input) {
           }
           Serial2.println(moveData);
         }
+        //break;
         //delayMicroseconds(1);
       }
-    default:
+    /*default:
       {
         recordingNow = 1;
         Serial2.println("Default case in recordingNow");
-      }
+        break;
+      }*/
   }
 
 
