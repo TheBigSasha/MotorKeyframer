@@ -220,7 +220,7 @@ void motorMove(String input) {
 
 
 
-  if (isDigit(input.substring(0,1)) == true) {
+  if (input.startsWith("0") or input.startsWith("1") or input.startsWith("2") or input.startsWith("3") or input.startsWith("4") or input.startsWith("5") or input.startsWith("6") or input.startsWith("7") or input.startsWith("8") or input.startsWith("9")) {
     Serial2.println("String Correct." + input);
   }
   else {

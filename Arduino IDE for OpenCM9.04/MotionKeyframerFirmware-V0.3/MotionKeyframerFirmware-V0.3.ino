@@ -65,10 +65,12 @@ DynamixelWorkbench dxl_wb;
 void setup() {
   pinMode(button2Pin, INPUT_PULLDOWN);
   pinMode(buttonPin, INPUT_PULLDOWN);
+  pinMode(recordButton, INPUT_PULLDOWN);
 
   //=========================== Serial initializations ===============================
   Serial.begin(57600);//Serial port Dynamixel
-  /*Serial2.begin(38400);
+  //Serial2.begin(38400);
+  /*delay(150);
     Serial2.write("AT+NAME=SashaMocoBT");
     Serial2.write("AT+BAUD=57600,N");
     Serial2.begin(57600);*/
