@@ -3,6 +3,7 @@
   ====================================================================================
 
   This is a combination of Serial-To-Array-To-Move V10 and MoveRecorder V1
+  This will not compile if your board is set to anything but OpenCM 9.04
 
   ====================================================================================
 
@@ -23,7 +24,7 @@
 
 int totalMotors = 3;
 #define BAUDRATE  1000000
-#define buttonPin 23 //Opencm 9.04 internal button /*This will not compile if your board is set to anything but OpenCM 9.04*/
+#define buttonPin 23 //Opencm 9.04 internal button 
 #define button2Pin 22 //External Button ------ Used to reset data
 #define recordButton 21
 
@@ -69,12 +70,10 @@ void setup() {
 
   //=========================== Serial initializations ===============================
   Serial.begin(57600);//Serial port Dynamixel
-  //Serial2.begin(38400);
-  /*delay(150);
-    Serial2.write("AT+NAME=SashaMocoBT");
-    Serial2.write("AT+BAUD=57600,N");
-    Serial2.begin(57600);*/
-  Serial2.begin(9600); //Serial port for Bluetooth
+    delay(150);
+    Serial2.begin(9600);
+    //Serial2.write("AT+DEFAULT");
+    Serial2.println("Bluetooth connected");
   //============================ Motor initializations ===============================
   dxl_wb.begin(DEVICE_NAME, BAUDRATE);
   for (int i = 1; i < TotalIDs; i++) {
@@ -119,7 +118,7 @@ void loop() {
     dataType = 3;
   }
 
-  if (button2State == LOW) {
+  if (button2State == HIGH) {
     dataType = 3;
   }
 
@@ -333,6 +332,7 @@ void motorMove(String input) {
             Serial2.println(goalTargetRatio);*/
 
           double unroundedTargetVel = unroundedGoalVel * goalTargetRatio; //This is the velocity in units of 0.229 [rev/min] as per the library spec
+          double unroundedAdjustedTargetVel = unroundedTargetVel - 0.5;
 
           /*Serial2.print("X1 = "); Serial2.println(previousPosition);
           Serial2.print("X2 = "); Serial2.println(currentPosition);
@@ -341,7 +341,7 @@ void motorMove(String input) {
           Serial2.print("v = "); Serial2.println(unroundedGoalVel);*/
 
 
-          int targetVel = round(unroundedTargetVel);
+          int targetVel = round(unroundedAdjustedTargetVel);
 
           if (targetVel <= 0) {
             targetVel = 1;
