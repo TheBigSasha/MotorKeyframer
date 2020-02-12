@@ -1,0 +1,7 @@
+{
+    "files.autoSave": "onFocusChange",
+    "arduino.commandPath": "Contents/MacOS/run-arduino.sh",
+    "arduino.logLevel": "verbose",
+    "arduino.path": "/Applications",
+    "C_Cpp.dimInactiveRegions": true
+}

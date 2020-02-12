@@ -36,11 +36,7 @@ int totalMotors = 3;
 
 #include <DynamixelWorkbench.h>
 //Setting Serial Port for Dynamixel Control Board
-#if defined(__OPENCM904__)
-#define DEVICE_NAME "1" //Dynamixel on Serial3(USART3)  <-OpenCM 485EXP
-#elif defined(__OPENCR__)
 #define DEVICE_NAME "1"
-#endif
 const int TotalIDs = totalMotors + 1;
 const int vel = 60; //Placeholder Velocity
 const int acc = 100; //Placeholder Acceleration
@@ -537,7 +533,7 @@ String moveRead(String input) {
           moveData = moveData + sampleMSPF + ",";
           int motorPosition[totalMotors];
           for (int i = 1; i < TotalIDs; i++) {
-            motorPosition[i] = dxl_wb.itemRead(i, "Present_Position");
+            motorPosition[i] = dxl_wb.itemRead(i, "Present_Position",NULL,NULL);//This worked before without NULL but is now broken
           }
           for (int i = 1; i < TotalIDs; i++) {
             moveData = moveData + motorPosition[i] + ",";
